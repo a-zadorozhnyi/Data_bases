@@ -2,6 +2,8 @@
 
 -- 1. В базе данных shop и sample присутствуют одни и те же таблицы, учебной базы данных. 
 -- Переместите запись id = 1 из таблицы shop.users в таблицу sample.users. Используйте транзакции.
+-- В данном случае перемещение подразумевает и удаление из первой таблицы...
+
 
 use shop;
 
@@ -18,12 +20,17 @@ id SERIAL PRIMARY KEY,
 
 START TRANSACTION; -- транзакция
 insert into sample.users select * from shop.users where id = 1;
+
+delete from shop.users where id = 1 limit 1;
+
 -- ROLLBACK; -- откат если нужен
 commit;
 
 START TRANSACTION; -- транзакция с SAVEPOINT
 savepoint save_1; 
 insert into sample.users select * from shop.users where id = 1;
+delete from shop.users where id = 1 limit 1;
+
 -- ROLLBACK TO SAVEPOINT save_1; 
 commit;
 
@@ -32,7 +39,7 @@ commit;
 
 use shop;
 
- create view les9_2 AS select p.name 'наименование', c.name 'раздел каталога' from products p join catalogs c on p.catalog_id = c.id;
+ create or replace view les9_2 AS select p.name 'наименование', c.name 'раздел каталога' from products p join catalogs c on p.catalog_id = c.id;
  
  select * from les9_2;
 
@@ -90,8 +97,8 @@ execute del using @cnt;
 create user 'shop_read'@'localhost' identified by '123';
 create user 'shop'@'localhost' identified by '123';
 
-grant all on shop.* to shop;
-grant usage, select on shop.* to shop_read;
+grant all on shop.* to 'shop'@'localhost';
+grant select, show view on shop.* to 'shop_read'@'localhost';
 
 
 
@@ -127,8 +134,7 @@ begin
 	end case;
 end//
             
-select hello();		
-
+ 
 
 -- 2. В таблице products есть два текстовых поля: name с названием товара и description с его описанием. 
 -- Допустимо присутствие обоих полей или одно из них. Ситуация, когда оба поля принимают неопределенное значение NULL неприемлема. 
@@ -152,7 +158,7 @@ insert into products (name, description) values ('GEFORCE RTX 2070', 'a nice vid
 insert into products (name) values ('GEFORCE RTX 2070'); -- ok
 insert into products (description) values ('a nice videocard'); -- ok
 insert into products (name, description) values (null, null); -- not ok. trigger warning.
-
+  
 select * from products;
 
 -- 3. (по желанию) Напишите хранимую функцию для вычисления произвольного числа Фибоначчи. Числами Фибоначчи называется последовательность в которой число равно сумме двух предыдущих чисел. 
@@ -208,3 +214,21 @@ BEGIN
 END//
 
 select fib(10);
+
+
+-- как в разборе ДЗ
+
+
+
+drop function if exists fibonacci;
+delimiter //
+create function fibonacci(num INT)
+returns int deterministic 
+begin 
+	declare fs double;
+    set fs = SQRT(5);
+	
+    return (POW((1 + fs) / 2.0, num) + POW((1 - fs) / 2.0, num)) / fs;
+end // 
+
+select fibonacci(10);
